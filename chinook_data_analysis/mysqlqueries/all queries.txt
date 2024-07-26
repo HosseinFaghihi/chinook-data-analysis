@@ -1,0 +1,191 @@
+/* Query 1 -  10آهنگ برتر که بیشترین درامد رو داشتن به همراه درامد ایجاد شده */
+
+SELECT   
+    t.Name AS song_name,  
+    a.Name AS artist_name,  
+    SUM(il.Quantity) AS total_quantity_sold,  
+    SUM(il.UnitPrice * il.Quantity) AS total_sales_value  
+FROM   
+    chinook.invoiceline il  
+JOIN   
+    chinook.track t ON il.TrackId = t.TrackId  
+JOIN   
+    chinook.album al ON t.AlbumId = al.AlbumId  
+JOIN   
+    chinook.artist a ON al.ArtistId = a.ArtistId  
+GROUP BY   
+    t.TrackId, t.Name, a.Name  
+ORDER BY   
+    total_quantity_sold DESC  
+LIMIT 10;
+
+============================================================
+/* Query 2.1 -  محبوب ترین ژانر، به تر تیب از نظر تعداد آهنگهای فروخته شده  */
+
+SELECT   
+    g.Name AS genre_name,  
+    COUNT(il.TrackId) AS total_songs_sold   
+FROM   
+    chinook.invoiceline il  
+JOIN   
+    chinook.track t ON il.TrackId = t.TrackId  
+JOIN   
+    chinook.genre g ON t.GenreId = g.GenreId  
+GROUP BY   
+    g.GenreId, g.Name  
+ORDER BY   
+    total_songs_sold DESC
+
+===========================================================
+/* Query 2.2 -   محبوب ترین ژانر، به تر تیب از نظر  کل درامد */
+
+SELECT   
+    g.Name AS genre_name,  
+    SUM(il.Quantity * il.UnitPrice) AS total_revenue  
+FROM   
+    chinook.invoiceline il  
+JOIN   
+    chinook.track t ON il.TrackId = t.TrackId  
+JOIN   
+    chinook.genre g ON t.GenreId = g.GenreId  
+GROUP BY   
+    g.GenreId, g.Name  
+ORDER BY   
+    total_revenue DESC
+
+===========================================================
+/* Query 3 - کاربرانی که تا حاال خرید نداشتند */
+
+SELECT   
+    c.CustomerId,   
+    c.FirstName,   
+    c.LastName,   
+    c.Email  
+FROM   
+    chinook.customer c  
+LEFT JOIN   
+    chinook.invoice i ON c.CustomerId = i.CustomerId  
+WHERE   
+    i.InvoiceId IS NULL;
+
+===========================================================
+/* Query 4 -  میانگین زمان آهنگ ها در در هر آلبوم */
+
+SELECT   
+    a.Title AS AlbumTitle,  
+    AVG(t.Milliseconds) / 1000 AS AverageDurationInSeconds  
+FROM   
+    chinook.album a  
+JOIN   
+    chinook.track t ON a.AlbumId = t.AlbumId  
+GROUP BY   
+    a.AlbumId, a.Title;
+
+===========================================================
+/* Query 5 - کارمندی که بیشترین تعداد فروش را داشته  */
+
+SELECT  
+  DATE_FORMAT(e.hiredate, '%Y-%m') AS hire_date,  
+  CONCAT(e.firstname, ' ', e.lastname) AS name,  
+  COUNT(i.invoiceid) AS number_of_sale,  
+  ROUND(SUM(i.total), 2) AS value_of_sale  
+FROM chinook.employee e  
+JOIN chinook.customer c ON c.supportrepid = e.employeeid  
+JOIN chinook.invoice i ON i.customerid = c.customerid  
+WHERE e.title = 'Sales Support Agent'  
+GROUP BY hire_date, name;
+
+===========================================================
+/* Query 6 -  کاربرانی که از بیش از یک ژانر خرید کردند*/
+
+SELECT   
+    c.CustomerId,   
+    c.FirstName,   
+    c.LastName,   
+    COUNT(DISTINCT g.GenreId) AS GenreCount  
+FROM   
+    chinook.customer c  
+JOIN   
+    chinook.invoice i ON c.CustomerId = i.CustomerId  
+JOIN   
+    chinook.invoiceline il ON i.InvoiceId = il.InvoiceId  
+JOIN   
+    chinook.track t ON il.TrackId = t.TrackId  
+JOIN   
+    chinook.genre g ON t.GenreId = g.GenreId  
+GROUP BY   
+    c.CustomerId, c.FirstName, c.LastName  
+HAVING   
+    COUNT(DISTINCT g.GenreId) > 1;
+
+===========================================================
+/* Query 7 - سه آهنگ برتر از نظر درامد فروش برای هر ژانر */
+
+WITH RankedTracks AS (  
+    SELECT   
+        t.TrackId,  
+        t.Name AS TrackName,  
+        g.Name AS GenreName,  
+        SUM(il.UnitPrice * il.Quantity) AS TotalRevenue,  
+        ROW_NUMBER() OVER (PARTITION BY g.GenreId ORDER BY SUM(il.UnitPrice * il.Quantity) DESC) AS RevenueRank  
+    FROM   
+        chinook.track t  
+    JOIN   
+        chinook.invoiceline il ON t.TrackId = il.TrackId  
+    JOIN   
+        chinook.genre g ON t.GenreId = g.GenreId  
+    GROUP BY   
+        t.TrackId, t.Name, g.Name  
+)  
+SELECT   
+    TrackName,  
+    GenreName,  
+    TotalRevenue  
+FROM   
+    RankedTracks  
+WHERE   
+    RevenueRank <= 3  
+ORDER BY   
+    GenreName;
+
+===========================================================
+/* Query 8 - تعداد آهنگهای فروخته شده به صورت تجمعی در هر سال به صورت جداگانه */
+
+SELECT   
+    YEAR(i.InvoiceDate) AS Year,  
+    SUM(il.Quantity) AS Total_Sold,  
+    SUM(SUM(il.Quantity)) OVER (ORDER BY YEAR(i.InvoiceDate)) AS Cumulative_Sold  
+FROM   
+    chinook.InvoiceLine il  
+JOIN   
+    chinook.Invoice i ON il.InvoiceId = i.InvoiceId  
+GROUP BY   
+    Year  
+ORDER BY   
+    Year;
+
+===========================================================
+/* Query 9 - کاربرانی که مجموع خریدشان باالتر از میانگین مجموع خرید تمام کاربران است */
+
+SELECT   
+    c.CustomerId,  
+    c.FirstName,  
+    c.LastName,  
+    SUM(il.Quantity * il.UnitPrice) AS Total_Purchase  
+FROM   
+    chinook.Customer c  
+JOIN   
+    chinook.Invoice i ON c.CustomerId = i.CustomerId  
+JOIN   
+    chinook.InvoiceLine il ON i.InvoiceId = il.InvoiceId  
+GROUP BY   
+    c.CustomerId  
+HAVING   
+    Total_Purchase > (SELECT AVG(Total)   
+                       FROM (SELECT SUM(il.Quantity * il.UnitPrice) AS Total  
+                             FROM chinook.Customer c  
+                             JOIN chinook.Invoice i ON c.CustomerId = i.CustomerId  
+                             JOIN chinook.InvoiceLine il ON i.InvoiceId = il.InvoiceId  
+                             GROUP BY c.CustomerId) AS SubQuery)  
+ORDER BY   
+    Total_Purchase DESC;
