@@ -18,4 +18,7 @@ JOIN
 GROUP BY   
     c.CustomerId, c.FirstName, c.LastName  
 HAVING   
-    COUNT(DISTINCT g.GenreId) > 1;
+    COUNT(DISTINCT g.GenreId) > 1  
+ORDER BY   
+   GenreCount desc; 
+    

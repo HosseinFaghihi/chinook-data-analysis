@@ -20,11 +20,13 @@ ORDER BY
 LIMIT 10;
 
 ============================================================
-/* Query 2.1 -  محبوب ترین ژانر، به تر تیب از نظر تعداد آهنگهای فروخته شده  */
+/* Query 2 - محبوب ترین ژانر، به تر تیب از نظر تعداد آهنگهای فروخته شده و کل درامد  */
 
-SELECT   
-    g.Name AS genre_name,  
-    COUNT(il.TrackId) AS total_songs_sold   
+SELECT
+    g.Name AS genre_name,
+    COUNT(il.TrackId) AS total_songs_sold, 
+    SUM(il.Quantity * il.UnitPrice) AS total_revenue
+      
 FROM   
     chinook.invoiceline il  
 JOIN   
@@ -35,24 +37,7 @@ GROUP BY
     g.GenreId, g.Name  
 ORDER BY   
     total_songs_sold DESC
-
-===========================================================
-/* Query 2.2 -   محبوب ترین ژانر، به تر تیب از نظر  کل درامد */
-
-SELECT   
-    g.Name AS genre_name,  
-    SUM(il.Quantity * il.UnitPrice) AS total_revenue  
-FROM   
-    chinook.invoiceline il  
-JOIN   
-    chinook.track t ON il.TrackId = t.TrackId  
-JOIN   
-    chinook.genre g ON t.GenreId = g.GenreId  
-GROUP BY   
-    g.GenreId, g.Name  
-ORDER BY   
-    total_revenue DESC
-
+    limit 3
 ===========================================================
 /* Query 3 - کاربرانی که تا حاال خرید نداشتند */
 
@@ -116,7 +101,9 @@ JOIN
 GROUP BY   
     c.CustomerId, c.FirstName, c.LastName  
 HAVING   
-    COUNT(DISTINCT g.GenreId) > 1;
+    COUNT(DISTINCT g.GenreId) > 1  
+ORDER BY   
+   GenreCount desc; 
 
 ===========================================================
 /* Query 7 - سه آهنگ برتر از نظر درامد فروش برای هر ژانر */
